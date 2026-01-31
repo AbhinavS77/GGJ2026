@@ -3,10 +3,8 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "GGJ/Jump/Jump Strategy Config", fileName = "JumpStrategy_Config")]
 public sealed class JumpStrategy_ConfigSO : ScriptableObject
 {
-    // Convert jump height (meters) to initial jump velocity
     public float GetJumpVelocity(MaskDefinition.JumpProfile profile, float gravityMagnitude)
     {
-        // v = sqrt(2gh)
         return Mathf.Sqrt(2f * gravityMagnitude * Mathf.Max(0.01f, profile.jumpHeight));
     }
 

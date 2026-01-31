@@ -119,120 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &125516995
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 125516996}
-  - component: {fileID: 125516999}
-  - component: {fileID: 125516998}
-  - component: {fileID: 125516997}
-  m_Layer: 0
-  m_Name: Capsule
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &125516996
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 125516995}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1535017500}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!136 &125516997
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 125516995}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!23 &125516998
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 125516995}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!33 &125516999
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 125516995}
-  m_Mesh: {fileID: 10208, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!1 &186005664
 GameObject:
   m_ObjectHideFlags: 0
@@ -514,6 +400,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Smiley
       objectReference: {fileID: 0}
+    - target: {fileID: 382641347053466386, guid: ba4b834b989c09d4f96d2b2c23b0b76d, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1010137737162910120, guid: ba4b834b989c09d4f96d2b2c23b0b76d, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -741,9 +631,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 125516996}
-  - {fileID: 186005665}
   - {fileID: 869948522}
+  - {fileID: 186005665}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1535017501
@@ -758,20 +647,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fec7bb45878881145ab80b39206999ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
-  walkSpeed: 4.5
+  walkSpeed: 4
   sprintSpeed: 7
   gravity: -25
   baseGravityMagnitude: 25
   jumpStrategy: {fileID: 11400000, guid: b18f9a6c9acd3a3428d8e985ee5236a5, type: 2}
   defaultJumpProfile:
-    jumpHeight: 1.8
-    coyoteTime: 0.15
-    jumpBufferTime: 0.12
-    fallGravityMultiplier: 1.35
-    lowJumpGravityMultiplier: 2.2
+    jumpHeight: 2
+    coyoteTime: 0.5
+    jumpBufferTime: 1
+    fallGravityMultiplier: 2
+    lowJumpGravityMultiplier: 1
     enableLandingBounce: 0
-    bounceMinFallSpeed: 7.5
-    bounceVelocity: 8
+    bounceMinFallSpeed: 2
+    bounceVelocity: 3
   lockWorldZ: 1
   wallLayers:
     serializedVersion: 2
@@ -780,7 +669,11 @@ MonoBehaviour:
   wallSlideSpeed: 1
   wallJumpUpVelocity: 8
   wallJumpPush: 10
-  debugLogs: 1
+  ballAcceleration: 35
+  ballDeceleration: 10
+  ballStopThreshold: 0.05
+  ballRollRadius: 0.5
+  debugLogs: 0
 --- !u!143 &1535017502
 CharacterController:
   m_ObjectHideFlags: 0
@@ -821,7 +714,6 @@ MonoBehaviour:
   actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   actionMapName: Player
   moveActionName: Move
-  interactActionName: Interact
   sprintActionName: Sprint
   jumpActionName: Jump
 --- !u!114 &1535017504
@@ -839,7 +731,6 @@ MonoBehaviour:
   input: {fileID: 1535017503}
   movement: {fileID: 1535017501}
   masks: {fileID: 1535017506}
-  cameraTransform: {fileID: 1389881854}
 --- !u!114 &1535017505
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -872,7 +763,8 @@ MonoBehaviour:
   movement: {fileID: 1535017501}
   capsule: {fileID: 996585680}
   unlockedCount: 4
-  equipOnStart: 0
+  equipOnStart: 1
+  ballSpawnEuler: {x: 0, y: 155, z: 0}
 --- !u!1 &1601472617
 GameObject:
   m_ObjectHideFlags: 0
@@ -1009,6 +901,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1637594181}
+  - component: {fileID: 1637594182}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -1031,6 +924,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1637594182
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1637594180}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5250916c1f80af540944ab2c91c07d49, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameManager
+  playerMasks: {fileID: 1535017506}
+  maxHealth: 3
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

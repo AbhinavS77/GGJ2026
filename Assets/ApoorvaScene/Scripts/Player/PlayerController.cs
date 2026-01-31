@@ -4,46 +4,44 @@ using UnityEngine.InputSystem;
 [DefaultExecutionOrder(-10)]
 public sealed class PlayerController : MonoBehaviour
 {
-    [Header("Refs")]
     [SerializeField] private InputReader input;
     [SerializeField] private PlayerMovement movement;
-
-    [Header("Debug")]
-    [SerializeField] private bool enableDebugMaskKeys = true;
+    [SerializeField] private MaskController masks;
 
     private void OnEnable()
     {
+        if (input == null || movement == null) return;
         input.JumpPressed += movement.JumpPressed;
         input.JumpReleased += movement.JumpReleased;
     }
 
     private void OnDisable()
     {
+        if (input == null || movement == null) return;
         input.JumpPressed -= movement.JumpPressed;
         input.JumpReleased -= movement.JumpReleased;
     }
 
     private void Update()
     {
+        if (input == null || movement == null) return;
+
         movement.SetMoveInput(input.MoveValue);
         movement.SetSprintHeld(input.SprintHeld);
 
-        if (enableDebugMaskKeys)
-            HandleMaskDebugInput();
+        HandleMaskInput();
     }
 
-    private void HandleMaskDebugInput()
+    private void HandleMaskInput()
     {
+        if (masks == null) return;
+
+        // ✅ Alpha1 / Digit1 switches to BOX (index 1)
         if (Keyboard.current.digit1Key.wasPressedThisFrame)
-            GameManager.Instance.RequestEquipMask(MaskType.Ball);
+            masks.EquipIndex(1);
 
-        if (Keyboard.current.digit2Key.wasPressedThisFrame)
-            GameManager.Instance.RequestEquipMask(MaskType.Pyramid);
-
-        if (Keyboard.current.digit3Key.wasPressedThisFrame)
-            GameManager.Instance.RequestEquipMask(MaskType.Cube);
-
-        if (Keyboard.current.digit4Key.wasPressedThisFrame)
-            GameManager.Instance.RequestEquipMask(MaskType.Rock);
+        // Optional: if you want a key to go back to Ball (index 0)
+        if (Keyboard.current.digit0Key.wasPressedThisFrame)
+            masks.EquipIndex(0);
     }
 }

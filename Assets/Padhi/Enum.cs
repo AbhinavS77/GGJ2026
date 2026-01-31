@@ -6,7 +6,6 @@ public enum MaskType
     Cube = 2,
     Rock = 3
 }
-
 public enum GameState
 {
     Playing,
