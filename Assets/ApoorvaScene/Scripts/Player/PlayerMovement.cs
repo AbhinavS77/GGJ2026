@@ -9,9 +9,9 @@ public sealed class PlayerMovement : MonoBehaviour
 
     [Header("Gravity")]
     [SerializeField] private float gravity = -25f;
+    [SerializeField] private float baseGravityMagnitude = 25f;
 
-    [Header("Jump Base")]
-    [SerializeField] private float baseGravityMagnitude = 25f; // positive for jump math
+    [Header("Jump Strategy")]
     [SerializeField] private JumpStrategy_ConfigSO jumpStrategy;
 
     [Header("Default Jump Profile (Fallback)")]
@@ -22,25 +22,26 @@ public sealed class PlayerMovement : MonoBehaviour
 
     [Header("Wall Stick (Cube)")]
     [SerializeField] private LayerMask wallLayers;
-    [Tooltip("How far to raycast for a wall. Should be slightly > controller.radius.")]
     [SerializeField] private float wallCheckDistance = 0.6f;
-    [Tooltip("Max downward speed while sticking to a wall.")]
     [SerializeField] private float wallSlideSpeed = 1.0f;
-    [Tooltip("Upward velocity used for wall jump.")]
     [SerializeField] private float wallJumpUpVelocity = 8f;
-    [Tooltip("Side push away from wall on wall jump (world X).")]
     [SerializeField] private float wallJumpPush = 10f;
+
+    [Header("Ball Movement (Ball)")]
+    [SerializeField] private float ballAcceleration = 35f;
+    [SerializeField] private float ballDeceleration = 10f;
+    [SerializeField] private float ballStopThreshold = 0.05f;
+    [SerializeField] private float ballRollRadius = 0.5f;
 
     [Header("Debug")]
     [SerializeField] private bool debugLogs = false;
 
     private CharacterController controller;
-    private Transform cameraTransform;
 
     private Vector2 moveInput;
     private bool sprintHeld;
 
-    private Vector3 velocity;
+    private Vector3 velocity; // y used for vertical
     private float lockedZ;
 
     private float speedMultiplier = 1f;
@@ -55,155 +56,153 @@ public sealed class PlayerMovement : MonoBehaviour
 
     private MaskDefinition.JumpProfile currentJumpProfile;
 
-    // Wall stick runtime state
-    private bool wallStickEnabled;
+    // ball horizontal momentum (used by Ball strategy only)
+    private float currentVelX;
+
+    // rolling visual target
+    private Transform ballVisual;
+    private bool rollVisualActive;
+
+    // wall stick runtime (Cube strategy)
     private bool isSticking;
-    private int wallSide; // -1 = wall on left, +1 = wall on right, 0 = none
+    private int wallSide; // -1 left, +1 right
+
+    private IMovementStrategy currentStrategy;
 
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
         lockedZ = transform.position.z;
         wasGrounded = controller.isGrounded;
-
-        // fallback so jump works even before first mask is equipped
         currentJumpProfile = defaultJumpProfile;
     }
 
-    // ===== External Setters (called from PlayerController/MaskController) =====
-    public void SetCameraTransform(Transform cam) => cameraTransform = cam;
+    // ================== API called by Controller/MaskController ==================
     public void SetMoveInput(Vector2 move) => moveInput = move;
     public void SetSprintHeld(bool held) => sprintHeld = held;
 
-    public void SetSpeedMultiplier(float multiplier) => speedMultiplier = multiplier;
-    public void SetGravityMultiplier(float multiplier) => gravityMultiplier = multiplier;
+    public void SetSpeedMultiplier(float m) => speedMultiplier = m;
+    public void SetGravityMultiplier(float m) => gravityMultiplier = m;
 
     public void SetJumpProfile(MaskDefinition.JumpProfile profile) => currentJumpProfile = profile;
 
-    public void SetWallStickEnabled(bool enabled)
-    {
-        wallStickEnabled = enabled;
+    public void SetBallVisual(Transform t) => ballVisual = t;
 
-        if (!enabled)
-        {
-            isSticking = false;
-            wallSide = 0;
-        }
+    public void SetStrategy(IMovementStrategy strategy)
+    {
+        if (currentStrategy == strategy) return;
+
+        currentStrategy?.OnExit(this);
+        currentStrategy = strategy;
+        currentStrategy?.OnEnter(this);
 
         if (debugLogs)
-            Debug.Log($"[PlayerMovement] WallStickEnabled={wallStickEnabled}");
+            Debug.Log($"[PlayerMovement] Strategy set to {currentStrategy?.GetType().Name}");
     }
 
-    // Called by input (space down)
     public void JumpPressed()
     {
-        if (debugLogs)
-            Debug.Log($"[PlayerMovement] JumpPressed(). grounded={controller.isGrounded}, sticking={isSticking}, wallSide={wallSide}");
-
         jumpHeld = true;
 
-        // Wall jump if cube is sticking
-        if (wallStickEnabled && isSticking && wallSide != 0)
+        // buffer from jump strategy
+        float buffer = (jumpStrategy != null) ? jumpStrategy.GetBufferTime(currentJumpProfile) : 0.1f;
+        jumpBufferTimer = buffer;
+
+        // if cube is sticking, wall jump immediately
+        if (isSticking && wallSide != 0)
         {
             DoWallJump();
             return;
         }
 
-        // Buffer jump
-        float buffer = (jumpStrategy != null) ? jumpStrategy.GetBufferTime(currentJumpProfile) : 0.1f;
-        jumpBufferTimer = buffer;
-
-        // Try immediately (fixes grounding flicker while running/edges)
         TryConsumeJump();
     }
 
-    // Called by input (space up)
-    public void JumpReleased()
-    {
-        jumpHeld = false;
-    }
+    public void JumpReleased() => jumpHeld = false;
 
+    // ================== Update ==================
     private void Update()
     {
-        // Cache grounded early for stable coyote while moving
-        bool groundedAtStart = controller.isGrounded;
+        float dt = Time.deltaTime;
 
-        // ----- Update coyote timer -----
+        // ✅ OPTIMIZATION: grounded read ONCE
+        bool grounded = controller.isGrounded;
+
+        // Update timers
         float coyote = (jumpStrategy != null) ? jumpStrategy.GetCoyoteTime(currentJumpProfile) : 0.1f;
+        coyoteTimer = grounded ? coyote : (coyoteTimer - dt);
 
-        if (groundedAtStart)
-            coyoteTimer = coyote;
-        else
-            coyoteTimer -= Time.deltaTime;
+        jumpBufferTimer -= dt;
 
-        // Buffer decays
-        jumpBufferTimer -= Time.deltaTime;
-
-        // Try buffered jump
         TryConsumeJump();
 
-        // ----- Horizontal movement (NO ROTATION) -----
-        Vector3 moveDir = GetCameraRelativeDirection(moveInput);
-        float speed = (sprintHeld ? sprintSpeed : walkSpeed) * speedMultiplier;
+        // Strategy tick
+        currentStrategy?.Tick(this, dt, grounded);
 
-        if (lockWorldZ)
-        {
-            moveDir.z = 0f;
-            moveDir = moveDir.sqrMagnitude > 0.0001f ? moveDir.normalized : Vector3.zero;
-        }
-
-        if (moveDir.sqrMagnitude > 0.0001f)
-        {
-            controller.Move(moveDir * speed * Time.deltaTime);
-        }
-
-        // ----- Wall stick handling (cube) -----
-        HandleWallStick();
-
-        // ----- Gravity + vertical motion -----
-        ApplyGravity();
-
-        // Keep in 2.5D lane
+        // lane lock
         if (lockWorldZ)
         {
             Vector3 p = transform.position;
             p.z = lockedZ;
             transform.position = p;
         }
+
+        wasGrounded = grounded;
     }
+
+    // ================== Movement Helpers used by Strategies ==================
+
+    public void MoveHorizontalImmediate(float dt)
+    {
+        float speed = (sprintHeld ? sprintSpeed : walkSpeed) * speedMultiplier;
+        float x = moveInput.x * speed;
+        if (Mathf.Abs(moveInput.x) > 0.01f)
+            controller.Move(new Vector3(x, 0f, 0f) * dt);
+    }
+
+    public void MoveHorizontalBallMomentum(float dt)
+    {
+        float speed = (sprintHeld ? sprintSpeed : walkSpeed) * speedMultiplier;
+        float desiredVelX = moveInput.x * speed;
+
+        if (Mathf.Abs(moveInput.x) > 0.01f)
+            currentVelX = Mathf.MoveTowards(currentVelX, desiredVelX, ballAcceleration * dt);
+        else
+            currentVelX = Mathf.MoveTowards(currentVelX, 0f, ballDeceleration * dt);
+
+        if (Mathf.Abs(currentVelX) < ballStopThreshold)
+            currentVelX = 0f;
+
+        controller.Move(new Vector3(currentVelX, 0f, 0f) * dt);
+    }
+
+    public void ResetHorizontalMomentum() => currentVelX = 0f;
+
+    public void SetRollVisualActive(bool active) => rollVisualActive = active;
+
+    public void ApplyBallRollVisual(float dt)
+    {
+        if (!rollVisualActive) return;
+        if (ballVisual == null) return;
+        if (ballRollRadius <= 0.0001f) return;
+
+        float radiansPerSec = currentVelX / ballRollRadius;
+        float degrees = radiansPerSec * Mathf.Rad2Deg * dt;
+
+        // roll on Z
+        ballVisual.Rotate(0f, 0f, -degrees, Space.Self);
+    }
+
+    // ================== Jump / Gravity ==================
 
     private void TryConsumeJump()
     {
         if (jumpBufferTimer <= 0f) return;
         if (coyoteTimer <= 0f) return;
 
-        if (debugLogs)
-            Debug.Log($"[PlayerMovement] Jump TRIGGERED. buffer={jumpBufferTimer:0.000}, coyote={coyoteTimer:0.000}");
-
         DoJump();
-
         jumpBufferTimer = 0f;
         coyoteTimer = 0f;
-    }
-
-    private Vector3 GetCameraRelativeDirection(Vector2 move)
-    {
-        Vector3 inputDir = new Vector3(move.x, 0f, move.y);
-
-        if (cameraTransform == null)
-            return inputDir.normalized;
-
-        Vector3 forward = cameraTransform.forward;
-        Vector3 right = cameraTransform.right;
-
-        forward.y = 0f;
-        right.y = 0f;
-
-        forward.Normalize();
-        right.Normalize();
-
-        Vector3 worldDir = forward * inputDir.z + right * inputDir.x;
-        return worldDir.normalized;
     }
 
     private void DoJump()
@@ -217,50 +216,79 @@ public sealed class PlayerMovement : MonoBehaviour
         velocity.y = v0;
 
         if (debugLogs)
-            Debug.Log($"[PlayerMovement] DoJump() -> velocity.y={velocity.y:0.00}");
+            Debug.Log($"[PlayerMovement] Jump -> v0={velocity.y:0.00}");
     }
 
-    private void DoWallJump()
+    // ✅ Optimized gravity (grounded passed in, optional wall-stick override)
+    public void ApplyGravityOptimized(float dt, bool grounded, bool allowStickOverride = false)
     {
-        if (debugLogs)
-            Debug.Log("[PlayerMovement] WALL JUMP!");
+        bool justLanded = grounded && !wasGrounded;
 
-        // Jump up
-        velocity.y = wallJumpUpVelocity;
+        // track fall speed for bounce
+        if (!grounded && velocity.y < 0f)
+            lastFallSpeedAbs = Mathf.Abs(velocity.y);
 
-        // Push away from wall
-        float pushDir = -wallSide;
-        controller.Move(new Vector3(pushDir * wallJumpPush, 0f, 0f) * Time.deltaTime);
+        if (grounded)
+        {
+            if (velocity.y < 0f)
+            {
+                // optional bounce on landing (Ball profile)
+                if (justLanded && jumpStrategy != null &&
+                    jumpStrategy.ShouldBounceOnLanding(currentJumpProfile, lastFallSpeedAbs) &&
+                    lastFallSpeedAbs >= currentJumpProfile.bounceMinFallSpeed)
+                {
+                    velocity.y = jumpStrategy.GetBounceVelocity(currentJumpProfile);
+                }
+                else
+                {
+                    velocity.y = -2f;
+                }
+            }
 
-        // Exit sticking
+            lastFallSpeedAbs = 0f;
+        }
+
+        // wall stick override
+        if (allowStickOverride && isSticking)
+        {
+            controller.Move(velocity * dt);
+            return;
+        }
+
+        float g = gravity * gravityMultiplier;
+        float extra = 1f;
+
+        if (!grounded && jumpStrategy != null)
+        {
+            if (velocity.y < 0f)
+                extra = jumpStrategy.GetFallMultiplier(currentJumpProfile);
+            else if (!jumpHeld)
+                extra = jumpStrategy.GetLowJumpMultiplier(currentJumpProfile);
+        }
+
+        velocity.y += g * extra * dt;
+        controller.Move(velocity * dt);
+    }
+
+    // ================== Wall Stick Helpers (Cube Strategy) ==================
+
+    public void ClearWallStickState()
+    {
         isSticking = false;
         wallSide = 0;
-
-        // Clear timers to prevent double-trigger
-        jumpBufferTimer = 0f;
-        coyoteTimer = 0f;
     }
 
-    private void HandleWallStick()
+    public void HandleWallStick(float dt)
     {
-        if (!wallStickEnabled)
-        {
-            isSticking = false;
-            wallSide = 0;
-            return;
-        }
-
-        // No sticking if grounded
-        if (controller.isGrounded)
-        {
-            isSticking = false;
-            wallSide = 0;
-            return;
-        }
-
-        // Stick only if pushing into wall (feels better)
+        // Only stick if pushing toward wall
         bool pushingLeft = moveInput.x < -0.1f;
         bool pushingRight = moveInput.x > 0.1f;
+
+        if (!pushingLeft && !pushingRight)
+        {
+            ClearWallStickState();
+            return;
+        }
 
         if (CheckWall(out int side))
         {
@@ -270,13 +298,9 @@ public sealed class PlayerMovement : MonoBehaviour
 
             if (pushingIntoWall)
             {
-                if (!isSticking && debugLogs)
-                    Debug.Log($"[PlayerMovement] STICKING to wall side={side}");
-
                 isSticking = true;
                 wallSide = side;
 
-                // Cap fall speed (slide)
                 if (velocity.y < -wallSlideSpeed)
                     velocity.y = -wallSlideSpeed;
 
@@ -284,9 +308,7 @@ public sealed class PlayerMovement : MonoBehaviour
             }
         }
 
-        // Not touching or not pushing into wall
-        isSticking = false;
-        wallSide = 0;
+        ClearWallStickState();
     }
 
     private bool CheckWall(out int side)
@@ -305,59 +327,16 @@ public sealed class PlayerMovement : MonoBehaviour
         return side != 0;
     }
 
-    private void ApplyGravity()
+    private void DoWallJump()
     {
-        bool grounded = controller.isGrounded;
+        velocity.y = wallJumpUpVelocity;
+        float pushDir = -wallSide;
 
-        // Detect landing (air -> ground)
-        bool justLanded = grounded && !wasGrounded;
+        // apply push as horizontal momentum
+        currentVelX = pushDir * wallJumpPush;
 
-        if (grounded)
-        {
-            if (velocity.y < 0f)
-            {
-                // Optional landing bounce (ball)
-                if (justLanded && jumpStrategy != null &&
-                    jumpStrategy.ShouldBounceOnLanding(currentJumpProfile, lastFallSpeedAbs))
-                {
-                    velocity.y = jumpStrategy.GetBounceVelocity(currentJumpProfile);
-                }
-                else
-                {
-                    velocity.y = -2f;
-                }
-            }
-
-            lastFallSpeedAbs = 0f;
-        }
-        else
-        {
-            if (velocity.y < 0f)
-                lastFallSpeedAbs = Mathf.Abs(velocity.y);
-        }
-
-        // If sticking: gravity effectively paused (we already cap slide speed)
-        if (isSticking)
-        {
-            controller.Move(velocity * Time.deltaTime);
-            wasGrounded = grounded;
-            return;
-        }
-
-        float g = gravity * gravityMultiplier; // negative
-        float extraMultiplier = 1f;
-
-        if (!grounded && jumpStrategy != null)
-        {
-            if (velocity.y < 0f)
-                extraMultiplier = jumpStrategy.GetFallMultiplier(currentJumpProfile);
-            else if (!jumpHeld)
-                extraMultiplier = jumpStrategy.GetLowJumpMultiplier(currentJumpProfile);
-        }
-
-        velocity.y += g * extraMultiplier * Time.deltaTime;
-        controller.Move(velocity * Time.deltaTime);
-
-        wasGrounded = grounded;
+        ClearWallStickState();
+        jumpBufferTimer = 0f;
+        coyoteTimer = 0f;
     }
 }

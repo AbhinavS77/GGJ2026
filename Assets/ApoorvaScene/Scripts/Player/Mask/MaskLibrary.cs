@@ -8,16 +8,7 @@ public sealed class MaskLibrary : ScriptableObject
     public MaskDefinition GetByIndex(int index)
     {
         if (masks == null || masks.Length == 0) return null;
-        index = Mathf.Clamp(index, 0, masks.Length - 1);
+        if (index < 0 || index >= masks.Length) return null;
         return masks[index];
-    }
-
-    public MaskDefinition GetById(MaskId id)
-    {
-        if (masks == null) return null;
-        for (int i = 0; i < masks.Length; i++)
-            if (masks[i] != null && masks[i].id == id)
-                return masks[i];
-        return null;
     }
 }

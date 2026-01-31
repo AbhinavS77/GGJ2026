@@ -1,10 +1,12 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public sealed class MaskVisual : MonoBehaviour
 {
     [SerializeField] private Transform visualRoot;
 
     private GameObject current;
+
+    public Transform CurrentVisualTransform => current != null ? current.transform : null;
 
     private void Awake()
     {
@@ -20,11 +22,10 @@ public sealed class MaskVisual : MonoBehaviour
             return;
 
         current = Instantiate(mask.visualPrefab, visualRoot);
-        current.transform.localPosition = new Vector3(0f, 1f, 0f); // lift it up
+        current.transform.localPosition = new Vector3(0f, 1f, 0f);
         current.transform.localRotation = Quaternion.identity;
         current.transform.localScale = Vector3.one;
 
         Debug.Log($"Spawned visual: {current.name} under {visualRoot.name}");
     }
-
 }
