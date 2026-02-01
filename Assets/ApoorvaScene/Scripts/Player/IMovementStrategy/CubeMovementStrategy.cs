@@ -5,6 +5,7 @@ public sealed class CubeMovementStrategy : IMovementStrategy
     public void OnEnter(PlayerMovement ctx)
     {
         ctx.SetRollVisualActive(false);
+        ctx.SetBallBounceActive(false);
         ctx.ClearWallStickState();
     }
 
@@ -18,14 +19,9 @@ public sealed class CubeMovementStrategy : IMovementStrategy
         ctx.MoveHorizontalImmediate(dt);
 
         if (grounded)
-        {
             ctx.ClearWallStickState();
-        }
         else
-        {
-            // ✅ pass dt (even if not used inside)
-            ctx.HandleWallStick(dt);
-        }
+            ctx.HandleWallStick(dt);   // ✅ dt REQUIRED
 
         ctx.ApplyGravityOptimized(dt, grounded, allowStickOverride: true);
     }

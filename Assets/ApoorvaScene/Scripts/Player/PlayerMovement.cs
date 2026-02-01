@@ -28,6 +28,19 @@ public sealed class PlayerMovement : MonoBehaviour
     [SerializeField] private float wallJumpUpVelocity = 8f;
     [SerializeField] private float wallJumpPush = 10f;
 
+    [Header("Wall Stick Tuning (Vertical Walls Only)")]
+    [SerializeField, Tooltip("Only surfaces with |normal.y| <= this count as vertical walls. 0.2 is good.")]
+    private float maxWallNormalY = 0.2f;
+
+    [SerializeField, Tooltip("Extra resistance against sliding down while sticking. Higher = more friction.")]
+    private float wallFriction = 25f;
+
+    [SerializeField, Tooltip("Push the controller slightly into the wall to keep contact stable.")]
+    private float wallStickPush = 2f;
+
+    [SerializeField, Tooltip("If true: almost no sliding. If false: controlled slide using wallSlideSpeed.")]
+    private bool hardStick = true;
+
     [Header("Ball Movement (Ball)")]
     [SerializeField] private float ballAcceleration = 35f;
     [SerializeField] private float ballDeceleration = 10f;
@@ -167,10 +180,9 @@ public sealed class PlayerMovement : MonoBehaviour
     {
         float dt = Time.deltaTime;
 
-        // Read grounded once per frame
         bool grounded = controller.isGrounded;
 
-        // Coyote timer
+        // Coyote
         float coyote = (jumpStrategy != null) ? jumpStrategy.GetCoyoteTime(currentJumpProfile) : 0.1f;
         coyoteTimer = grounded ? coyote : (coyoteTimer - dt);
 
@@ -183,10 +195,13 @@ public sealed class PlayerMovement : MonoBehaviour
         // Strategy tick
         currentStrategy?.Tick(this, dt, grounded);
 
-        // Landing anim
+        // Landing event + optional animator trigger
         bool justLanded = grounded && !wasGrounded;
-        if (playLandAnimation && justLanded)
-            OnLand?.Invoke();
+        if (justLanded)
+        {
+            if (playLandAnimation)
+                OnLand?.Invoke();
+        }
 
         // Lane lock
         if (lockWorldZ)
@@ -275,7 +290,7 @@ public sealed class PlayerMovement : MonoBehaviour
         if (grounded && velocity.y < 0f)
             velocity.y = -2f;
 
-        // wall stick override
+        // wall stick override: we already manage falling while sticking
         if (allowStickOverride && isSticking)
         {
             controller.Move(velocity * dt);
@@ -310,9 +325,6 @@ public sealed class PlayerMovement : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Call ONLY in Ball strategy BEFORE ApplyGravityOptimized().
-    /// </summary>
     public void UpdateBallLandingBounce(float dt, bool grounded)
     {
         if (!ballBounceActive) return;
@@ -365,53 +377,104 @@ public sealed class PlayerMovement : MonoBehaviour
         wallSide = 0;
     }
 
+    /// <summary>
+    /// ✅ Vertical walls only + friction.
+    /// Call from CubeMovementStrategy when airborne.
+    /// </summary>
     public void HandleWallStick(float dt)
     {
+        // Must be airborne to stick
+        if (controller.isGrounded)
+        {
+            ClearWallStickState();
+            return;
+        }
+
         bool pushingLeft = moveInput.x < -0.1f;
         bool pushingRight = moveInput.x > 0.1f;
 
+        // Only stick when player is pushing into a wall
         if (!pushingLeft && !pushingRight)
         {
             ClearWallStickState();
             return;
         }
 
-        if (CheckWall(out int side))
+        if (CheckWall(out int side, out RaycastHit hit))
         {
             bool pushingIntoWall =
                 (side == -1 && pushingLeft) ||
                 (side == +1 && pushingRight);
 
-            if (pushingIntoWall)
+            if (!pushingIntoWall)
             {
-                isSticking = true;
-                wallSide = side;
+                ClearWallStickState();
+                return;
+            }
 
+            // ✅ STICK ON
+            isSticking = true;
+            wallSide = side;
+
+            // Small push into the wall to keep stable contact
+            float pushX = -hit.normal.x * wallStickPush;
+            controller.Move(new Vector3(pushX, 0f, 0f) * dt);
+
+            // "Friction": resist sliding down
+            if (hardStick)
+            {
+                if (velocity.y < 0f)
+                    velocity.y = Mathf.MoveTowards(velocity.y, 0f, wallFriction * dt);
+            }
+            else
+            {
                 if (velocity.y < -wallSlideSpeed)
                     velocity.y = -wallSlideSpeed;
 
-                return;
+                velocity.y = Mathf.MoveTowards(velocity.y, -wallSlideSpeed, (wallFriction * 0.2f) * dt);
             }
+
+            return;
         }
 
         ClearWallStickState();
     }
 
-    // ✅ ADD THIS HERE (right under HandleWallStick)
-    private bool CheckWall(out int side)
+    /// <summary>
+    /// ✅ Left/Right raycasts and ONLY accepts vertical-ish walls.
+    /// Floors/slopes are rejected using the normal.y filter.
+    /// </summary>
+    private bool CheckWall(out int side, out RaycastHit hit)
     {
         side = 0;
+        hit = default;
 
         Vector3 origin = transform.position + controller.center;
         float dist = Mathf.Max(wallCheckDistance, controller.radius + 0.05f);
 
-        bool hitLeft = Physics.Raycast(origin, Vector3.left, dist, wallLayers, QueryTriggerInteraction.Ignore);
-        bool hitRight = Physics.Raycast(origin, Vector3.right, dist, wallLayers, QueryTriggerInteraction.Ignore);
+        // Left
+        if (Physics.Raycast(origin, Vector3.left, out RaycastHit leftHit, dist, wallLayers, QueryTriggerInteraction.Ignore))
+        {
+            if (Mathf.Abs(leftHit.normal.y) <= maxWallNormalY)
+            {
+                side = -1;
+                hit = leftHit;
+                return true;
+            }
+        }
 
-        if (hitLeft) side = -1;
-        else if (hitRight) side = +1;
+        // Right
+        if (Physics.Raycast(origin, Vector3.right, out RaycastHit rightHit, dist, wallLayers, QueryTriggerInteraction.Ignore))
+        {
+            if (Mathf.Abs(rightHit.normal.y) <= maxWallNormalY)
+            {
+                side = +1;
+                hit = rightHit;
+                return true;
+            }
+        }
 
-        return side != 0;
+        return false;
     }
 
     private void DoWallJump()

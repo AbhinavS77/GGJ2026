@@ -21,7 +21,7 @@ MonoBehaviour:
   colliderMode: 0
   controllerRadius: 0.5
   controllerHeight: 0.5
-  controllerCenter: {x: 0, y: -0.05, z: 0}
+  controllerCenter: {x: 0, y: 0, z: 0}
   colliderPrefab: {fileID: 0}
   enableBounce: 1
   enableAerialDash: 0
