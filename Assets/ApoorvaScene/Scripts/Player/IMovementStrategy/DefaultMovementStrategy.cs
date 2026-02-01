@@ -1,9 +1,12 @@
+using UnityEngine;
+
 public sealed class DefaultMovementStrategy : IMovementStrategy
 {
     public void OnEnter(PlayerMovement ctx)
     {
         ctx.SetRollVisualActive(false);
-        ctx.ClearWallStickState(); // safety if swapping from cube
+        ctx.SetBallBounceActive(false);
+        ctx.ClearWallStickState();
     }
 
     public void OnExit(PlayerMovement ctx) { }

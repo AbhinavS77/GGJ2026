@@ -130,12 +130,11 @@ public sealed class MaskController : MonoBehaviour
     // ✅ Safer equip by type (prevents order mismatch bugs)
     public bool EquipMask(MaskType type)
     {
-        if (library == null || library.masks == null || library.masks.Length == 0)
-            return false;
+        if (library == null || library.masks == null) return false;
 
         for (int i = 0; i < library.masks.Length; i++)
         {
-            MaskDefinition m = library.masks[i];
+            var m = library.masks[i];
             if (m != null && m.id == type)
                 return EquipIndex(i);
         }
@@ -143,4 +142,5 @@ public sealed class MaskController : MonoBehaviour
         Debug.LogWarning($"[MaskController] No mask found for type: {type}");
         return false;
     }
+
 }

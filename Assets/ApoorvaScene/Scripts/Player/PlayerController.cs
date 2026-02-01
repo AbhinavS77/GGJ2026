@@ -4,22 +4,51 @@ using UnityEngine.InputSystem;
 [DefaultExecutionOrder(-10)]
 public sealed class PlayerController : MonoBehaviour
 {
+    [Header("Refs")]
     [SerializeField] private InputReader input;
     [SerializeField] private PlayerMovement movement;
     [SerializeField] private MaskController masks;
 
+    // ✅ NEW
+    [Header("UI")]
+    [SerializeField] private UIOverlayController uiOverlay;
+
+    //[Header("Optional Camera Ref")]
+    //[SerializeField] private Transform cameraTransform;
+
+    private void Awake()
+    {
+        if (movement == null)
+            movement = GetComponent<PlayerMovement>();
+
+        //if (movement != null && cameraTransform != null)
+        //    movement.SetCameraTransform(cameraTransform);
+    }
+
     private void OnEnable()
     {
         if (input == null || movement == null) return;
-        input.JumpPressed += movement.JumpPressed;
-        input.JumpReleased += movement.JumpReleased;
+
+        input.JumpPressed += OnJumpPressed;
+        input.JumpReleased += OnJumpReleased;
+
+        // ✅ NEW
+        input.ToggleUI += OnToggleUI;
+
+        Debug.Log("[PlayerController] Subscribed to input events");
     }
 
     private void OnDisable()
     {
         if (input == null || movement == null) return;
-        input.JumpPressed -= movement.JumpPressed;
-        input.JumpReleased -= movement.JumpReleased;
+
+        input.JumpPressed -= OnJumpPressed;
+        input.JumpReleased -= OnJumpReleased;
+
+        // ✅ NEW
+        input.ToggleUI -= OnToggleUI;
+
+        Debug.Log("[PlayerController] Unsubscribed from input events");
     }
 
     private void Update()
@@ -36,12 +65,24 @@ public sealed class PlayerController : MonoBehaviour
     {
         if (masks == null) return;
 
-        // ✅ Alpha1 / Digit1 switches to BOX (index 1)
-        if (Keyboard.current.digit1Key.wasPressedThisFrame)
-            masks.EquipIndex(1);
+        if (Keyboard.current.digit1Key.wasPressedThisFrame) masks.EquipIndex(0);
+        if (Keyboard.current.digit2Key.wasPressedThisFrame) masks.EquipIndex(1);
+        if (Keyboard.current.digit3Key.wasPressedThisFrame) masks.EquipIndex(2);
+        if (Keyboard.current.digit4Key.wasPressedThisFrame) masks.EquipIndex(3);
+    }
 
-        // Optional: if you want a key to go back to Ball (index 0)
-        if (Keyboard.current.digit0Key.wasPressedThisFrame)
-            masks.EquipIndex(0);
+    private void OnJumpPressed() => movement.JumpPressed();
+    private void OnJumpReleased() => movement.JumpReleased();
+
+    // ✅ NEW
+    private void OnToggleUI()
+    {
+        if (uiOverlay == null)
+        {
+            Debug.LogWarning("[PlayerController] uiOverlay not assigned.");
+            return;
+        }
+
+        uiOverlay.Toggle();
     }
 }

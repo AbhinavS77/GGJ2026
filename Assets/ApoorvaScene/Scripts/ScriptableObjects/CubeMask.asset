@@ -21,7 +21,7 @@ MonoBehaviour:
   colliderMode: 0
   controllerRadius: 0.25
   controllerHeight: 0.9
-  controllerCenter: {x: 0, y: 1.2, z: 0}
+  controllerCenter: {x: 0, y: 1, z: 0}
   colliderPrefab: {fileID: 0}
   enableBounce: 0
   enableAerialDash: 0
@@ -30,7 +30,7 @@ MonoBehaviour:
   equipSfx: {fileID: 0}
   equipVfxPrefab: {fileID: 0}
   jump:
-    jumpHeight: 1.5
+    jumpHeight: 6
     coyoteTime: 0.15
     jumpBufferTime: 0.1
     fallGravityMultiplier: 1.5
